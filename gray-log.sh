@@ -41,51 +41,82 @@ fi
 mkdir -p ~/docker-graylog-v4.2
 cd ~/docker-graylog-v4.2
 cat > docker-compose.yml <<EOL
-version: '3'
 
 services:
+  # MongoDB
   mongodb:
-    image: mongo:5.0
-    container_name: mongo
+    image: mongo:4.2
+    restart: always
+    networks:
+      - graylog
     volumes:
       - /mongo_data:/data/db
-    networks:
-      - graylog
 
+  # Elasticsearch
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch-7.10.2
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    restart: always
     volumes:
       - /es_data:/usr/share/elasticsearch/data
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
     networks:
       - graylog
 
+  # Graylog
   graylog:
     image: graylog/graylog:4.2
-    container_name: graylog
-    environment:
-      - GRAYLOG_PASSWORD_SECRET=mysecret
-      - GRAYLOG_ROOT_PASSWORD_SHA2=$(echo -n "admin" | sha256sum | awk '{print $1}')
-      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
     volumes:
       - /graylog_journal:/usr/share/graylog/data/journal
+    environment:
+      # CHANGE ME (must be at least 16 characters)! Base64
+      - GRAYLOG_PASSWORD_SECRET=c2VjcnVpdHlwZWVyYW51dA==
+      # Password: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/
+      - TZ=Asia/Bangkok
+      - GRAYLOG_ROOT_TIMEZONE=Asia/Bangkok
+    networks:
+      - graylog
+    links:
+      - mongodb:mongo
+      - elasticsearch
+    restart: always
     depends_on:
       - mongodb
       - elasticsearch
-    networks:
-      - graylog
     ports:
-      - "9000:9000"
-      - "1514:1514"
-      - "5044:5044"
-      - "12201:12201/udp"
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP & UDP
+      - 1514:1514
+      - 1514:1514/udp
+      # GELF TCP & UDP
+      - 12201:12201
+      - 12201:12201/udp
 
+# Volumes
+volumes:
+  mongo_data:
+    driver: local
+  es_data:
+    driver: local
+  graylog_journal:
+    driver: local
+
+# Networks
 networks:
   graylog:
     driver: bridge
+
 EOL
 
 # กำหนดค่าหน่วยความจำสำหรับ Elasticsearch
