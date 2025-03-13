@@ -7,7 +7,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # อัปเดตระบบ
-sudo apt update && sudo apt upgrade -y
+sudo apt update 
 
 # ติดตั้งแพ็กเกจที่จำเป็น
 sudo apt install -y lsb-release ca-certificates apt-transport-https software-properties-common curl
