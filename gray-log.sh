@@ -2,7 +2,7 @@
 
 # Upgrade and install dependencies
 echo "Updating package lists..."
-sudo apt update && sudo apt upgrade -y
+sudo apt update 
 
 # Install Docker
 echo "Installing Docker..."
